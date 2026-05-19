@@ -1,278 +1,218 @@
 {% extends "base.html" %}
-
-{% block title %}Voice Studio — Content Publisher{% endblock %}
-{% block page_title %}Voice Studio{% endblock %}
-{% block page_subtitle %}Generate MP3 voice from your script{% endblock %}
+{% block title %}Voice Studio{% endblock %}
 
 {% block content %}
-<div class="tts-layout">
-    <!-- Left: Input Form -->
-    <div class="tts-form-section">
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-pen-fancy"></i> Script & Settings</h2>
-            </div>
-            <div class="card-body">
-                <form id="ttsForm" onsubmit="return false;">
-                    <!-- Filename -->
-                    <div class="form-group">
-                        <label for="filename">
-                            <i class="fas fa-file-audio"></i> Output Filename
-                        </label>
-                        <input type="text" id="filename" name="filename"
-                               placeholder="e.g., my_narration_episode_1"
-                               class="form-input" autocomplete="off">
-                        <small class="form-hint">This will be the name of your MP3 file</small>
-                    </div>
+<div class="voice-page">
 
-                    <!-- Script Text -->
-                    <div class="form-group">
-                        <label for="prompt">
-                            <i class="fas fa-scroll"></i> Your Script
-                        </label>
-                        <textarea id="prompt" name="prompt" rows="10"
-                                  placeholder="Paste your English script here..."
-                                  class="form-textarea" required></textarea>
-                        <div class="textarea-footer">
-                            <span id="charCount" class="char-count">0 characters</span>
-                            <button type="button" class="btn-text" onclick="clearScript()">
-                                <i class="fas fa-eraser"></i> Clear
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Voice Selection -->
-                    <div class="form-group">
-                        <label>
-                            <i class="fas fa-microphone"></i> Choose Voice
-                        </label>
-                        <div class="voice-grid">
-                            {% for key, voice in voices.items() %}
-                            <div class="voice-card {% if voice.get('recommended') %}recommended{% endif %}"
-                                 data-voice="{{ key }}" onclick="selectVoice('{{ key }}')">
-                                <div class="voice-flag">
-                                    <span class="flag-badge">{{ voice.flag }}</span>
-                                </div>
-                                <div class="voice-info">
-                                    <span class="voice-name">{{ voice.name }}</span>
-                                    <span class="voice-desc">{{ voice.description }}</span>
-                                </div>
-                                <div class="voice-gender">
-                                    <i class="fas fa-{{ 'mars' if voice.gender == 'Male' else 'venus' }}"></i>
-                                </div>
-                                {% if voice.get('recommended') %}
-                                <div class="voice-badge">TOP PICK</div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <input type="hidden" id="selectedVoice" name="voice" value="1">
-                    </div>
-
-                    <!-- Narration Style -->
-                    <div class="form-group">
-                        <label>
-                            <i class="fas fa-sliders-h"></i> Narration Style
-                        </label>
-                        <div class="preset-grid">
-                            {% for key, preset in presets.items() %}
-                            <div class="preset-card" data-preset="{{ key }}" onclick="selectPreset('{{ key }}')">
-                                <i class="fas fa-{{ preset.icon }}"></i>
-                                <span class="preset-label">{{ preset.label }}</span>
-                                <span class="preset-details">Rate: {{ preset.rate }} | Pitch: {{ preset.pitch }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <input type="hidden" id="selectedPreset" name="preset" value="documentary">
-                    </div>
-
-                    <!-- Generate Button -->
-                    <button type="button" class="btn-primary btn-large btn-generate"
-                            onclick="generateTTS()" id="generateBtn">
-                        <i class="fas fa-magic"></i>
-                        <span>Generate Voice MP3</span>
-                    </button>
-                </form>
-            </div>
+    <!-- LEFT PANEL: Input -->
+    <section class="panel panel-left">
+        <div class="panel-section">
+            <label class="field-label">Output Filename</label>
+            <input type="text" id="filename" class="field-input" placeholder="my_narration">
         </div>
-    </div>
 
-    <!-- Right: Results & History -->
-    <div class="tts-result-section">
-        <!-- Current Result -->
-        <div class="card" id="resultCard" style="display: none;">
-            <div class="card-header">
-                <h2><i class="fas fa-check-circle"></i> Generation Result</h2>
+        <div class="panel-section flex-grow">
+            <label class="field-label">Script</label>
+            <textarea id="prompt" class="field-textarea" placeholder="Paste your English script here..."></textarea>
+            <span class="field-hint" id="charCount">0 chars</span>
+        </div>
+
+        <div class="panel-section">
+            <label class="field-label">Voice <button class="btn-link" onclick="openVoiceInfo()">see all 12</button></label>
+            <div class="voice-row">
+                {% for key, voice in voices.items() %}
+                <button type="button" class="voice-chip {% if voice.get('recommended') %}chip-pick{% endif %}"
+                        data-key="{{ key }}" onclick="pickVoice('{{ key }}')" title="{{ voice.description }}">
+                    <span class="chip-flag">{{ voice.flag }}</span>
+                    {{ voice.name }}
+                </button>
+                {% endfor %}
             </div>
-            <div class="card-body">
-                <div class="result-info">
-                    <div class="result-item">
-                        <span class="result-label">File</span>
-                        <span class="result-value" id="resultFilename">—</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="result-label">Voice</span>
-                        <span class="result-value" id="resultVoice">—</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="result-label">Style</span>
-                        <span class="result-value" id="resultPreset">—</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="result-label">Size</span>
-                        <span class="result-value" id="resultSize">—</span>
-                    </div>
+            <input type="hidden" id="selectedVoice" value="1">
+        </div>
+
+        <div class="panel-section">
+            <label class="field-label">Style</label>
+            <div class="style-row">
+                {% for key, preset in presets.items() %}
+                <button type="button" class="style-chip" data-key="{{ key }}" onclick="pickStyle('{{ key }}')" title="Rate: {{ preset.rate }} | Pitch: {{ preset.pitch }}">
+                    <i class="fas fa-{{ preset.icon }}"></i> {{ preset.label }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" id="selectedStyle" value="documentary">
+        </div>
+
+        <button class="btn-main" id="generateBtn" onclick="generateTTS()">
+            <i class="fas fa-magic"></i> Generate MP3
+        </button>
+    </section>
+
+    <!-- RIGHT PANEL: Result -->
+    <section class="panel panel-right">
+        <!-- Result card -->
+        <div class="result-card" id="resultCard" style="display:none">
+            <div class="result-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="result-body">
+                <span class="result-file" id="resultFilename">—</span>
+                <div class="result-meta">
+                    <span id="resultVoice">—</span>
+                    <span id="resultPreset">—</span>
+                    <span id="resultSize">—</span>
                 </div>
-                <div class="result-actions">
-                    <a id="downloadLink" href="#" class="btn-primary" download>
-                        <i class="fas fa-download"></i> Download MP3
-                    </a>
-                    <button class="btn-secondary" onclick="playPreview()">
-                        <i class="fas fa-play"></i> Preview
-                    </button>
-                </div>
-                <!-- Audio Player -->
-                <audio id="audioPlayer" controls style="width: 100%; margin-top: 16px; display: none;"></audio>
+            </div>
+            <div class="result-actions">
+                <a id="downloadLink" href="#" class="btn-action" download><i class="fas fa-download"></i></a>
+                <button class="btn-action" onclick="playPreview()"><i class="fas fa-play"></i></button>
             </div>
         </div>
 
-        <!-- Error Card -->
-        <div class="card card-error" id="errorCard" style="display: none;">
-            <div class="card-header">
-                <h2><i class="fas fa-exclamation-triangle"></i> Error</h2>
-            </div>
-            <div class="card-body">
-                <p id="errorMessage">Something went wrong.</p>
-            </div>
+        <!-- Audio player -->
+        <audio id="audioPlayer" controls style="display:none;width:100%;margin-top:8px"></audio>
+
+        <!-- Error -->
+        <div class="error-card" id="errorCard" style="display:none">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorMessage">Error</span>
         </div>
 
-        <!-- History -->
-        <div class="card">
-            <div class="card-header">
-                <h2><i class="fas fa-history"></i> Recent Generations</h2>
+        <!-- History shortcut -->
+        <div class="history-section">
+            <div class="history-head">
+                <span class="field-label">Recent</span>
+                <button class="btn-link" onclick="openHistory()">view all</button>
             </div>
-            <div class="card-body">
+            <div class="history-list" id="historyList">
                 {% if tts_history %}
-                <div class="history-list">
-                    {% for item in tts_history %}
-                    <div class="history-item">
-                        <div class="history-info">
-                            <span class="history-filename">{{ item.filename }}</span>
-                            <span class="history-meta">
-                                {{ item.voice_name }} · {{ item.preset_name }}
-                                · {{ item.file_size_kb|round(0)|int }} KB
-                                · {{ item.created_at[:16] }}
-                            </span>
-                        </div>
-                        <a href="/api/tts/download/{{ item.filename }}" class="btn-icon" download title="Download">
-                            <i class="fas fa-download"></i>
-                        </a>
+                    {% for item in tts_history[:5] %}
+                    <div class="history-row">
+                        <span class="hist-name">{{ item.filename }}</span>
+                        <span class="hist-meta">{{ item.voice_name }}</span>
+                        <a href="/api/tts/download/{{ item.filename }}" class="btn-icon-sm" download><i class="fas fa-download"></i></a>
                     </div>
                     {% endfor %}
-                </div>
                 {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-microphone-alt"></i>
-                    <p>No generations yet. Create your first voice!</p>
-                </div>
+                    <span class="hist-empty">No generations yet</span>
                 {% endif %}
             </div>
         </div>
-    </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    const promptEl = document.getElementById('prompt');
-    const charCountEl = document.getElementById('charCount');
-    promptEl.addEventListener('input', () => {
-        charCountEl.textContent = `${promptEl.value.length} characters`;
+    // Defaults
+    pickVoice('1');
+    pickStyle('documentary');
+
+    document.getElementById('prompt').addEventListener('input', function(){
+        document.getElementById('charCount').textContent = this.value.length + ' chars';
     });
 
-    function clearScript() {
-        promptEl.value = '';
-        charCountEl.textContent = '0 characters';
-    }
-
-    function selectVoice(key) {
-        document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
-        document.querySelector(`.voice-card[data-voice="${key}"]`).classList.add('selected');
+    function pickVoice(key) {
+        document.querySelectorAll('.voice-chip').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.voice-chip[data-key="${key}"]`).classList.add('active');
         document.getElementById('selectedVoice').value = key;
     }
 
-    function selectPreset(key) {
-        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
-        document.querySelector(`.preset-card[data-preset="${key}"]`).classList.add('selected');
-        document.getElementById('selectedPreset').value = key;
+    function pickStyle(key) {
+        document.querySelectorAll('.style-chip').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.style-chip[data-key="${key}"]`).classList.add('active');
+        document.getElementById('selectedStyle').value = key;
     }
 
-    // Select defaults
-    selectVoice('1');
-    selectPreset('documentary');
-
     async function generateTTS() {
-        const prompt = promptEl.value.trim();
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) { showToast('Paste your script first','error'); return; }
+
         const voice = document.getElementById('selectedVoice').value;
-        const preset = document.getElementById('selectedPreset').value;
+        const preset = document.getElementById('selectedStyle').value;
         const filename = document.getElementById('filename').value.trim();
 
-        if (!prompt) {
-            showToast('Please enter your script text', 'error');
-            return;
-        }
-
-        showLoading('Generating your voice MP3...');
+        showLoading('Generating MP3...');
         document.getElementById('generateBtn').disabled = true;
 
         try {
-            const response = await fetch('/api/tts/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, voice, preset, filename }),
+            const res = await fetch('/api/tts/generate', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({prompt, voice, preset, filename})
             });
-
-            const result = await response.json();
+            const data = await res.json();
             hideLoading();
 
-            if (result.success) {
-                document.getElementById('resultCard').style.display = 'block';
+            if (data.success) {
+                document.getElementById('resultCard').style.display = 'flex';
                 document.getElementById('errorCard').style.display = 'none';
-                document.getElementById('resultFilename').textContent = result.filename;
-                document.getElementById('resultVoice').textContent = result.voice;
-                document.getElementById('resultPreset').textContent = result.preset;
-                document.getElementById('resultSize').textContent = result.size_kb + ' KB';
-                document.getElementById('downloadLink').href = '/api/tts/download/' + result.filename;
+                document.getElementById('resultFilename').textContent = data.filename;
+                document.getElementById('resultVoice').textContent = data.voice;
+                document.getElementById('resultPreset').textContent = data.preset;
+                document.getElementById('resultSize').textContent = data.size_kb + ' KB';
+                document.getElementById('downloadLink').href = '/api/tts/download/' + data.filename;
 
-                // Setup audio preview
                 const player = document.getElementById('audioPlayer');
-                player.src = '/api/tts/download/' + result.filename;
+                player.src = '/api/tts/download/' + data.filename;
                 player.style.display = 'block';
 
-                showToast('Voice MP3 generated successfully!', 'success');
+                showToast('MP3 generated!', 'success');
 
-                // Auto-download
-                const link = document.createElement('a');
-                link.href = '/api/tts/download/' + result.filename;
-                link.download = result.filename;
-                link.click();
+                // auto download
+                const a = document.createElement('a');
+                a.href = '/api/tts/download/' + data.filename;
+                a.download = data.filename;
+                a.click();
             } else {
                 document.getElementById('resultCard').style.display = 'none';
-                document.getElementById('errorCard').style.display = 'block';
-                document.getElementById('errorMessage').textContent = result.error;
-                showToast(result.error, 'error');
+                document.getElementById('errorCard').style.display = 'flex';
+                document.getElementById('errorMessage').textContent = data.error;
+                showToast(data.error, 'error');
             }
-        } catch (err) {
+        } catch(e) {
             hideLoading();
-            showToast('Network error: ' + err.message, 'error');
+            showToast('Network error', 'error');
         }
-
         document.getElementById('generateBtn').disabled = false;
     }
 
     function playPreview() {
-        const player = document.getElementById('audioPlayer');
-        if (player.src) player.play();
+        const p = document.getElementById('audioPlayer');
+        if (p.src) p.play();
+    }
+
+    function openVoiceInfo() {
+        const voices = {{ voices | tojson }};
+        let html = '<div class="modal-grid">';
+        for (const [key, v] of Object.entries(voices)) {
+            html += `<div class="voice-detail-card ${v.recommended ? 'pick' : ''}">
+                <span class="vdc-flag">${v.flag}</span>
+                <span class="vdc-name">${v.name}</span>
+                <span class="vdc-desc">${v.description}</span>
+                <span class="vdc-gen"><i class="fas fa-${v.gender === 'Male' ? 'mars' : 'venus'}"></i> ${v.gender}</span>
+                ${v.recommended ? '<span class="vdc-badge">TOP PICK</span>' : ''}
+            </div>`;
+        }
+        html += '</div>';
+        document.getElementById('genericModalTitle').innerHTML = '<i class="fas fa-microphone"></i> All Voices';
+        document.getElementById('genericModalBody').innerHTML = html;
+        openModal('genericModal');
+    }
+
+    function openHistory() {
+        fetch('/api/history/tts').then(r=>r.json()).then(items => {
+            let html = '<div class="modal-list">';
+            if (items.length === 0) { html += '<p class="hist-empty">No history yet</p>'; }
+            items.forEach(item => {
+                html += `<div class="modal-list-row">
+                    <span>${item.filename}</span>
+                    <span class="hist-meta">${item.voice_name} · ${item.file_size_kb} KB</span>
+                    <a href="/api/tts/download/${item.filename}" class="btn-icon-sm" download><i class="fas fa-download"></i></a>
+                </div>`;
+            });
+            html += '</div>';
+            document.getElementById('genericModalTitle').innerHTML = '<i class="fas fa-history"></i> Generation History';
+            document.getElementById('genericModalBody').innerHTML = html;
+            openModal('genericModal');
+        });
     }
 </script>
 {% endblock %}

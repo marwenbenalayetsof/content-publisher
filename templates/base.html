@@ -3,68 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Content Publisher{% endblock %}</title>
+    <title>Content Publisher</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-        <div class="sidebar-logo">
+    <!-- Top Navigation Bar -->
+    <header class="topbar">
+        <div class="topbar-brand">
             <i class="fas fa-broadcast-tower"></i>
             <span>ContentHub</span>
         </div>
-        <nav class="sidebar-nav">
-            <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
-                <i class="fas fa-microphone-alt"></i>
-                <span>Voice Studio</span>
+        <nav class="topbar-tabs">
+            <a href="/" class="tab {% if request.path == '/' %}active{% endif %}">
+                <i class="fas fa-microphone-alt"></i> Voice
             </a>
-            <a href="/publish" class="nav-item {% if request.path == '/publish' %}active{% endif %}">
-                <i class="fas fa-video"></i>
-                <span>Publish Video</span>
-            </a>
-            <a href="/accounts" class="nav-item {% if request.path == '/accounts' %}active{% endif %}">
-                <i class="fas fa-plug"></i>
-                <span>Accounts</span>
+            <a href="/publish" class="tab {% if request.path == '/publish' %}active{% endif %}">
+                <i class="fas fa-share-alt"></i> Publish
             </a>
         </nav>
-        <div class="sidebar-footer">
-            <div class="version-info">v1.0.0</div>
+        <div class="topbar-actions">
+            <button class="btn-ghost" onclick="openModal('accountsModal')">
+                <i class="fas fa-plug"></i> Accounts
+            </button>
         </div>
-    </aside>
+    </header>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Top Bar -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
-                <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
-            </div>
-            <div class="topbar-right">
-                <div class="status-indicator" id="statusIndicator">
-                    <span class="status-dot"></span>
-                    <span>Ready</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Page Content -->
-        <div class="content-area">
-            {% block content %}{% endblock %}
-        </div>
+    <!-- Page Content — fits viewport -->
+    <main class="page">
+        {% block content %}{% endblock %}
     </main>
 
-    <!-- Toast Notifications -->
+    <!-- Accounts Modal -->
+    <div class="modal-overlay" id="accountsModal" style="display:none">
+        <div class="modal-box modal-lg">
+            <div class="modal-head">
+                <h3><i class="fas fa-plug"></i> Connected Accounts</h3>
+                <button class="btn-close" onclick="closeModal('accountsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="accountsModalBody">
+                <!-- loaded via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Modal (reused for platform details, voice info, history, etc.) -->
+    <div class="modal-overlay" id="genericModal" style="display:none">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3 id="genericModalTitle">Details</h3>
+                <button class="btn-close" onclick="closeModal('genericModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="genericModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <p class="loading-text" id="loadingText">Processing...</p>
-        </div>
+    <div id="loadingOverlay" class="loading-overlay" style="display:none">
+        <div class="loading-spinner"></div>
+        <p id="loadingText">Processing...</p>
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

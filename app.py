@@ -57,16 +57,6 @@ def publish_page():
     )
 
 
-@app.route("/accounts")
-def accounts_page():
-    """Account management page."""
-    return render_template(
-        "accounts.html",
-        platforms=PLATFORMS,
-        accounts=get_accounts(DATABASE_PATH),
-    )
-
-
 # ═══════════════════════════════════════════════════════════
 #  API — TTS
 # ═══════════════════════════════════════════════════════════

@@ -1,461 +1,291 @@
 {% extends "base.html" %}
-
-{% block title %}Publish Video — Content Publisher{% endblock %}
-{% block page_title %}Publish Video{% endblock %}
-{% block page_subtitle %}Upload a video from your computer and publish it to social media{% endblock %}
+{% block title %}Publish Video{% endblock %}
 
 {% block content %}
-<div class="publish-layout">
-    <!-- Step 1: Connect Accounts -->
-    <div class="card">
-        <div class="card-header">
-            <div class="step-badge">1</div>
-            <h2><i class="fas fa-plug"></i> Connect Your Accounts</h2>
-        </div>
-        <div class="card-body">
-            <div class="account-status-grid">
-                {% for key, platform in platforms.items() %}
-                <div class="account-status-card" id="account-{{ key }}">
-                    <div class="platform-icon" style="background: {{ platform.color }}20; color: {{ platform.color }};">
-                        <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }}"></i>
-                    </div>
-                    <div class="platform-status-info">
-                        <span class="platform-name">{{ platform.name }}</span>
-                        <span class="platform-connection" id="connection-{{ key }}">
-                            {% set connected = namespace(val=false) %}
-                            {% for acc in accounts %}
-                                {% if acc.platform == key %}
-                                    {% set connected.val = true %}
-                                    <span class="status-connected"><i class="fas fa-check-circle"></i> Connected as {{ acc.account_name or 'Account' }}</span>
-                                {% endif %}
-                            {% endfor %}
-                            {% if not connected.val %}
-                                <span class="status-disconnected"><i class="fas fa-times-circle"></i> Not connected</span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <button class="btn-sm {% if connected.val %}btn-danger{% else %}btn-primary{% endif %}"
-                            onclick="{% if connected.val %}disconnectAccount('{{ key }}'){% else %}openConnectModal('{{ key }}'){% endif %}">
-                        {% if connected.val %}Disconnect{% else %}Connect{% endif %}
-                    </button>
-                </div>
-                {% endfor %}
-            </div>
-            <div class="info-banner">
-                <i class="fas fa-info-circle"></i>
-                <span>Connect accounts first. You can also manage them on the <a href="/accounts">Accounts</a> page.</span>
-            </div>
-        </div>
-    </div>
+<div class="publish-page">
 
-    <!-- Step 2: Upload Video -->
-    <div class="card">
-        <div class="card-header">
-            <div class="step-badge">2</div>
-            <h2><i class="fas fa-cloud-upload-alt"></i> Upload Video</h2>
-        </div>
-        <div class="card-body">
-            <div class="upload-zone" id="uploadZone">
-                <div class="upload-icon">
-                    <i class="fas fa-film"></i>
-                </div>
-                <p class="upload-text">Drag & drop your video here</p>
-                <p class="upload-subtext">or click to browse — MP4, MOV, AVI, MKV, WebM</p>
-                <input type="file" id="videoFile" accept="video/*" style="display: none;" onchange="handleVideoUpload(this)">
-                <button class="btn-secondary" onclick="document.getElementById('videoFile').click()">
-                    <i class="fas fa-folder-open"></i> Browse Files
-                </button>
-            </div>
-            <div class="upload-progress" id="uploadProgress" style="display: none;">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <p class="progress-text" id="progressText">Uploading...</p>
-            </div>
-            <div class="upload-result" id="uploadResult" style="display: none;">
-                <div class="upload-info">
-                    <i class="fas fa-check-circle" style="color: var(--success);"></i>
-                    <span id="uploadedFilename">—</span>
-                    <span class="upload-size" id="uploadedSize">—</span>
-                </div>
-                <button class="btn-text" onclick="resetUpload()">
-                    <i class="fas fa-redo"></i> Change Video
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- LEFT PANEL: Upload + Platforms -->
+    <section class="panel panel-left">
 
-    <!-- Step 3: Select Platforms & Fill Details -->
-    <div class="card">
-        <div class="card-header">
-            <div class="step-badge">3</div>
-            <h2><i class="fas fa-share-alt"></i> Select Platforms & Details</h2>
-        </div>
-        <div class="card-body">
-            <!-- Platform Selection -->
-            <div class="platform-select-grid">
-                {% for key, platform in platforms.items() %}
-                <label class="platform-select-card" id="select-{{ key }}">
-                    <input type="checkbox" name="platforms" value="{{ key }}" onchange="togglePlatform('{{ key }}')">
-                    <div class="platform-select-inner">
-                        <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }}"></i>
-                        <span>{{ platform.name }}</span>
-                        <div class="check-indicator"><i class="fas fa-check"></i></div>
-                    </div>
-                </label>
-                {% endfor %}
+        <!-- Upload zone -->
+        <div class="panel-section">
+            <label class="field-label">Upload Video</label>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('videoFile').click()">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span id="uploadLabel">Click or drag video here</span>
+                <input type="file" id="videoFile" accept="video/*" style="display:none" onchange="handleUpload(this)">
             </div>
+            <div class="upload-done" id="uploadDone" style="display:none">
+                <i class="fas fa-check-circle"></i>
+                <span id="uploadedName">—</span>
+                <button class="btn-link" onclick="resetUpload()">change</button>
+            </div>
+        </div>
 
-            <!-- Dynamic Platform Forms -->
-            <div id="platformForms">
+        <!-- Platform selection -->
+        <div class="panel-section">
+            <label class="field-label">Platforms</label>
+            <div class="platform-grid">
                 {% for key, platform in platforms.items() %}
-                <div class="platform-form" id="form-{{ key }}" style="display: none;">
-                    <h3 class="platform-form-title">
-                        <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }}"></i>
-                        {{ platform.name }} Details
-                    </h3>
-                    <div class="platform-form-fields">
-                        {% for field in platform.fields %}
-                        <div class="form-group">
-                            <label for="{{ key }}-{{ field.key }}">
-                                {% if field.required %}<span class="required">*</span>{% endif %}
-                                {{ field.label }}
-                            </label>
-                            {% if field.type == 'text' %}
-                            <input type="text" id="{{ key }}-{{ field.key }}"
-                                   name="{{ key }}-{{ field.key }}"
-                                   class="form-input"
-                                   {% if field.max_length %}maxlength="{{ field.max_length }}"{% endif %}
-                                   {% if field.required %}required{% endif %}>
-                            {% elif field.type == 'textarea' %}
-                            <textarea id="{{ key }}-{{ field.key }}"
-                                      name="{{ key }}-{{ field.key }}"
-                                      class="form-textarea" rows="3"
-                                      {% if field.max_length %}maxlength="{{ field.max_length }}"{% endif %}
-                                      {% if field.required %}required{% endif %}></textarea>
-                            {% elif field.type == 'select' %}
-                            <select id="{{ key }}-{{ field.key }}"
-                                    name="{{ key }}-{{ field.key }}"
-                                    class="form-select"
-                                    {% if field.required %}required{% endif %}>
-                                {% for opt in field.options %}
-                                <option value="{{ opt.value }}">{{ opt.label }}</option>
-                                {% endfor %}
-                            </select>
-                            {% elif field.type == 'checkbox' %}
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="{{ key }}-{{ field.key }}"
-                                       name="{{ key }}-{{ field.key }}">
-                                <span class="checkbox-custom"></span>
-                                <span>{{ field.label }}</span>
-                            </label>
-                            {% endif %}
-                            {% if field.max_length %}
-                            <small class="form-hint">Max {{ field.max_length }} characters</small>
-                            {% endif %}
-                        </div>
+                <div class="plat-card" id="plat-{{ key }}" onclick="togglePlatform('{{ key }}')">
+                    <div class="plat-check"><i class="fas fa-check"></i></div>
+                    <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }} plat-icon"></i>
+                    <span class="plat-name">{{ platform.name }}</span>
+                    <span class="plat-status" id="plat-status-{{ key }}">
+                        {% set connected = namespace(val=false) %}
+                        {% for acc in accounts %}
+                            {% if acc.platform == key %}{% set connected.val = true %}{% endif %}
                         {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Step 4: Publish -->
-    <div class="card">
-        <div class="card-header">
-            <div class="step-badge">4</div>
-            <h2><i class="fas fa-rocket"></i> Publish</h2>
-        </div>
-        <div class="card-body">
-            <div class="publish-summary" id="publishSummary">
-                <p>Upload a video and select platforms above to see your publishing plan.</p>
-            </div>
-            <button class="btn-primary btn-large btn-publish" id="publishBtn" onclick="publishVideo()" disabled>
-                <i class="fas fa-paper-plane"></i>
-                <span>Publish Video</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Results -->
-    <div class="card" id="publishResults" style="display: none;">
-        <div class="card-header">
-            <h2><i class="fas fa-flag-checkered"></i> Publishing Results</h2>
-        </div>
-        <div class="card-body">
-            <div id="resultsList"></div>
-        </div>
-    </div>
-
-    <!-- Publish History -->
-    <div class="card">
-        <div class="card-header">
-            <h2><i class="fas fa-history"></i> Recent Publications</h2>
-        </div>
-        <div class="card-body">
-            {% if publish_history %}
-            <div class="history-list">
-                {% for item in publish_history %}
-                <div class="history-item">
-                    <div class="history-info">
-                        <span class="history-filename">{{ item.video_filename }}</span>
-                        <span class="history-meta">
-                            {{ item.platforms|join(', ') }}
-                            · {{ 'All Success' if item.all_success else 'Partial/Failed' }}
-                            · {{ item.created_at[:16] }}
-                        </span>
-                    </div>
-                    <span class="status-badge {{ 'badge-success' if item.all_success else 'badge-warning' }}">
-                        {{ 'SUCCESS' if item.all_success else 'PARTIAL' }}
+                        {% if connected.val %}
+                            <i class="fas fa-link" style="color:var(--success)"></i>
+                        {% else %}
+                            <i class="fas fa-unlink" style="color:var(--text-muted)"></i>
+                        {% endif %}
                     </span>
                 </div>
                 {% endfor %}
             </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-video"></i>
-                <p>No publications yet. Upload and publish your first video!</p>
-            </div>
-            {% endif %}
         </div>
-    </div>
-</div>
 
-<!-- Account Connect Modal -->
-<div class="modal" id="accountModal" style="display: none;">
-    <div class="modal-backdrop" onclick="closeModal()"></div>
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="modalTitle">Connect Account</h3>
-            <button class="btn-icon" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        <!-- Selected platforms summary -->
+        <div class="panel-section" id="selectedSummary" style="display:none">
+            <label class="field-label">Configure <button class="btn-link" onclick="openPlatformDetails()">edit details</button></label>
+            <div class="summary-tags" id="summaryTags"></div>
         </div>
-        <div class="modal-body" id="modalBody"></div>
-    </div>
+
+        <!-- Publish button -->
+        <button class="btn-main" id="publishBtn" onclick="publishVideo()" disabled>
+            <i class="fas fa-paper-plane"></i> Publish
+        </button>
+    </section>
+
+    <!-- RIGHT PANEL: Results + History -->
+    <section class="panel panel-right">
+
+        <!-- Results -->
+        <div id="publishResults" style="display:none">
+            <label class="field-label">Results</label>
+            <div id="resultsList"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState">
+            <i class="fas fa-share-alt"></i>
+            <p>Upload a video, pick platforms, and publish</p>
+        </div>
+
+        <!-- History -->
+        <div class="history-section">
+            <div class="history-head">
+                <span class="field-label">Recent</span>
+                <button class="btn-link" onclick="openPublishHistory()">view all</button>
+            </div>
+            <div class="history-list">
+                {% if publish_history %}
+                    {% for item in publish_history[:5] %}
+                    <div class="history-row">
+                        <span class="hist-name">{{ item.video_filename[:30] }}</span>
+                        <span class="hist-meta">{{ item.platforms|join(', ') }}</span>
+                        <span class="status-dot-sm {{ 'dot-ok' if item.all_success else 'dot-warn' }}"></span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <span class="hist-empty">No publications yet</span>
+                {% endif %}
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     let uploadedVideoPath = '';
+    let selectedPlatforms = {};
+    const platformsConfig = {{ platforms | tojson }};
 
-    // Drag and drop
-    const uploadZone = document.getElementById('uploadZone');
-    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-    uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
-    uploadZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadZone.classList.remove('dragover');
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('video/')) uploadVideo(file);
+    // Drag & drop
+    const uz = document.getElementById('uploadZone');
+    uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('dragover'); });
+    uz.addEventListener('dragleave', () => uz.classList.remove('dragover'));
+    uz.addEventListener('drop', e => {
+        e.preventDefault(); uz.classList.remove('dragover');
+        if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
     });
 
-    function handleVideoUpload(input) {
-        const file = input.files[0];
-        if (file) uploadVideo(file);
-    }
+    function handleUpload(input) { if (input.files[0]) uploadFile(input.files[0]); }
 
-    async function uploadVideo(file) {
-        const formData = new FormData();
-        formData.append('video', file);
-
+    async function uploadFile(file) {
+        const fd = new FormData(); fd.append('video', file);
         document.getElementById('uploadZone').style.display = 'none';
-        document.getElementById('uploadProgress').style.display = 'block';
+        document.getElementById('uploadDone').style.display = 'flex';
+        document.getElementById('uploadedName').textContent = 'Uploading...';
 
         try {
-            const response = await fetch('/api/video/upload', { method: 'POST', body: formData });
-            const result = await response.json();
-            document.getElementById('uploadProgress').style.display = 'none';
-
-            if (result.success) {
-                uploadedVideoPath = result.file_path;
-                document.getElementById('uploadResult').style.display = 'block';
-                document.getElementById('uploadedFilename').textContent = result.filename;
-                document.getElementById('uploadedSize').textContent = result.size_mb + ' MB';
-                updatePublishButton();
-                updatePublishSummary();
-                showToast('Video uploaded successfully!', 'success');
+            const res = await fetch('/api/video/upload', {method:'POST', body:fd});
+            const data = await res.json();
+            if (data.success) {
+                uploadedVideoPath = data.file_path;
+                document.getElementById('uploadedName').textContent = data.filename + ' (' + data.size_mb + ' MB)';
+                updatePublishBtn();
             } else {
-                document.getElementById('uploadZone').style.display = 'block';
-                showToast(result.error, 'error');
+                resetUpload(); showToast(data.error, 'error');
             }
-        } catch (err) {
-            document.getElementById('uploadProgress').style.display = 'none';
-            document.getElementById('uploadZone').style.display = 'block';
-            showToast('Upload failed: ' + err.message, 'error');
-        }
+        } catch(e) { resetUpload(); showToast('Upload failed','error'); }
     }
 
     function resetUpload() {
         uploadedVideoPath = '';
-        document.getElementById('uploadResult').style.display = 'none';
-        document.getElementById('uploadZone').style.display = 'block';
+        document.getElementById('uploadZone').style.display = 'flex';
+        document.getElementById('uploadDone').style.display = 'none';
         document.getElementById('videoFile').value = '';
-        updatePublishButton();
-        updatePublishSummary();
+        updatePublishBtn();
     }
 
     function togglePlatform(key) {
-        const form = document.getElementById(`form-${key}`);
-        const checkbox = document.querySelector(`input[name="platforms"][value="${key}"]`);
-        const card = document.getElementById(`select-${key}`);
-        form.style.display = checkbox.checked ? 'block' : 'none';
-        card.classList.toggle('selected', checkbox.checked);
-        updatePublishButton();
-        updatePublishSummary();
-    }
-
-    function updatePublishButton() {
-        const selected = document.querySelectorAll('input[name="platforms"]:checked');
-        document.getElementById('publishBtn').disabled = selected.length === 0 || !uploadedVideoPath;
-    }
-
-    function updatePublishSummary() {
-        const selected = document.querySelectorAll('input[name="platforms"]:checked');
-        const summary = document.getElementById('publishSummary');
-        if (selected.length === 0 || !uploadedVideoPath) {
-            summary.innerHTML = '<p>Upload a video and select platforms above to see your publishing plan.</p>';
-            return;
+        const card = document.getElementById('plat-' + key);
+        const isActive = card.classList.toggle('active');
+        if (isActive) {
+            selectedPlatforms[key] = {};
+        } else {
+            delete selectedPlatforms[key];
         }
-        const names = Array.from(selected).map(cb => document.querySelector(`#select-${cb.value} span`).textContent);
-        summary.innerHTML = `<p><strong>Video:</strong> ${document.getElementById('uploadedFilename')?.textContent || 'not uploaded'} — <strong>Publishing to:</strong> ${names.join(', ')}</p>`;
+        updateSummary();
+        updatePublishBtn();
+    }
+
+    function updateSummary() {
+        const keys = Object.keys(selectedPlatforms);
+        const section = document.getElementById('selectedSummary');
+        if (keys.length === 0) { section.style.display = 'none'; return; }
+        section.style.display = 'block';
+        const names = {youtube:'YouTube', tiktok:'TikTok', instagram:'Instagram', facebook:'Facebook'};
+        document.getElementById('summaryTags').innerHTML = keys.map(k =>
+            `<span class="tag">${names[k]}</span>`
+        ).join('');
+    }
+
+    function updatePublishBtn() {
+        document.getElementById('publishBtn').disabled = !uploadedVideoPath || Object.keys(selectedPlatforms).length === 0;
+    }
+
+    function openPlatformDetails() {
+        const keys = Object.keys(selectedPlatforms);
+        if (keys.length === 0) { showToast('Select a platform first','error'); return; }
+        const names = {youtube:'YouTube', tiktok:'TikTok', instagram:'Instagram', facebook:'Facebook'};
+        const icons = {youtube:'youtube', tiktok:'tiktok', instagram:'instagram', facebook:'facebook'};
+
+        let html = '<div class="platform-tabs">';
+        keys.forEach((k, i) => {
+            html += `<button class="ptab ${i===0?'active':''}" onclick="switchPTab('${k}')"><i class="fab fa-${icons[k]}"></i> ${names[k]}</button>`;
+        });
+        html += '</div>';
+
+        keys.forEach((k, i) => {
+            html += `<div class="ptab-content" id="ptab-${k}" style="${i!==0?'display:none':''}">`;
+            const fields = platformsConfig[k].fields;
+            fields.forEach(f => {
+                html += `<div class="form-group-sm">`;
+                html += `<label>${f.label}${f.required ? ' <span class="req">*</span>' : ''}</label>`;
+                if (f.type === 'text') {
+                    html += `<input type="text" class="field-input" id="pf-${k}-${f.key}" placeholder="${f.label}">`;
+                } else if (f.type === 'textarea') {
+                    html += `<textarea class="field-textarea-sm" id="pf-${k}-${f.key}" placeholder="${f.label}"></textarea>`;
+                } else if (f.type === 'select') {
+                    html += `<select class="field-select" id="pf-${k}-${f.key}">`;
+                    f.options.forEach(o => { html += `<option value="${o.value}">${o.label}</option>`; });
+                    html += '</select>';
+                } else if (f.type === 'checkbox') {
+                    html += `<label class="check-label"><input type="checkbox" id="pf-${k}-${f.key}"> ${f.label}</label>`;
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        });
+
+        html += '<button class="btn-main" onclick="savePlatformDetails()" style="margin-top:12px"><i class="fas fa-check"></i> Save Details</button>';
+
+        document.getElementById('genericModalTitle').innerHTML = '<i class="fas fa-sliders-h"></i> Platform Details';
+        document.getElementById('genericModalBody').innerHTML = html;
+        openModal('genericModal');
+    }
+
+    function switchPTab(key) {
+        document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.ptab-content').forEach(c => c.style.display = 'none');
+        event.target.closest('.ptab').classList.add('active');
+        document.getElementById('ptab-' + key).style.display = 'block';
+    }
+
+    function savePlatformDetails() {
+        const keys = Object.keys(selectedPlatforms);
+        keys.forEach(k => {
+            const meta = {};
+            const fields = platformsConfig[k].fields;
+            fields.forEach(f => {
+                const el = document.getElementById(`pf-${k}-${f.key}`);
+                if (el) meta[f.key] = el.type === 'checkbox' ? el.checked : el.value;
+            });
+            selectedPlatforms[k] = meta;
+        });
+        closeModal('genericModal');
+        showToast('Details saved', 'success');
     }
 
     async function publishVideo() {
-        const selected = document.querySelectorAll('input[name="platforms"]:checked');
-        if (selected.length === 0 || !uploadedVideoPath) {
-            showToast('Please upload a video and select at least one platform', 'error');
-            return;
-        }
-
-        const platformsData = {};
-        selected.forEach(cb => {
-            const key = cb.value;
-            const metadata = {};
-            document.querySelectorAll(`[id^="${key}-"]`).forEach(input => {
-                const fieldKey = input.id.replace(`${key}-`, '');
-                metadata[fieldKey] = input.type === 'checkbox' ? input.checked : input.value;
-            });
-            platformsData[key] = metadata;
-        });
-
-        showLoading('Publishing your video to selected platforms...');
+        if (!uploadedVideoPath || Object.keys(selectedPlatforms).length === 0) return;
+        showLoading('Publishing...');
         document.getElementById('publishBtn').disabled = true;
 
         try {
-            const response = await fetch('/api/publish', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ video_path: uploadedVideoPath, platforms: platformsData }),
+            const res = await fetch('/api/publish', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({video_path: uploadedVideoPath, platforms: selectedPlatforms})
             });
-            const result = await response.json();
+            const data = await res.json();
             hideLoading();
-            displayResults(result);
-        } catch (err) {
-            hideLoading();
-            showToast('Publishing failed: ' + err.message, 'error');
-        }
+            showResults(data);
+        } catch(e) { hideLoading(); showToast('Publish failed','error'); }
         document.getElementById('publishBtn').disabled = false;
     }
 
-    function displayResults(result) {
+    function showResults(data) {
+        document.getElementById('emptyState').style.display = 'none';
         document.getElementById('publishResults').style.display = 'block';
         const list = document.getElementById('resultsList');
-        if (result.results) {
-            let html = '';
-            for (const [platform, res] of Object.entries(result.results)) {
-                const success = res.success;
-                html += `<div class="result-card ${success ? 'result-success' : 'result-error'}">
-                    <div class="result-icon"><i class="fas fa-${success ? 'check-circle' : 'times-circle'}"></i></div>
-                    <div class="result-details">
-                        <span class="result-platform">${platform.toUpperCase()}</span>
-                        <span class="result-message">${success ? res.message : res.error}</span>
-                        ${res.video_url ? `<a href="${res.video_url}" target="_blank" class="result-link">${res.video_url}</a>` : ''}
-                    </div>
+        let html = '';
+        if (data.results) {
+            for (const [plat, res] of Object.entries(data.results)) {
+                const ok = res.success;
+                html += `<div class="res-row ${ok ? 'res-ok' : 'res-fail'}">
+                    <i class="fas fa-${ok ? 'check-circle' : 'times-circle'}"></i>
+                    <span class="res-name">${plat.toUpperCase()}</span>
+                    <span class="res-msg">${ok ? res.message : res.error}</span>
+                    ${res.video_url ? `<a href="${res.video_url}" target="_blank" class="btn-link">open</a>` : ''}
                 </div>`;
             }
-            list.innerHTML = html;
         } else {
-            list.innerHTML = `<div class="result-card result-error">
-                <div class="result-icon"><i class="fas fa-times-circle"></i></div>
-                <div class="result-details">
-                    <span class="result-platform">Error</span>
-                    <span class="result-message">${result.error || 'Unknown error'}</span>
-                </div>
-            </div>`;
+            html += `<div class="res-row res-fail"><i class="fas fa-times-circle"></i><span>${data.error}</span></div>`;
         }
-        showToast(result.all_success ? 'All platforms published!' : 'Some platforms had issues', result.all_success ? 'success' : 'warning');
+        list.innerHTML = html;
+        showToast(data.all_success ? 'All published!' : 'Some failed', data.all_success ? 'success' : 'warning');
     }
 
-    // Account Modal
-    function openConnectModal(platform) {
-        const modal = document.getElementById('accountModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalBody = document.getElementById('modalBody');
-        const names = {youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook'};
-        modalTitle.textContent = `Connect ${names[platform]}`;
-
-        modalBody.innerHTML = `
-            <div class="modal-instructions">
-                <p>Enter your ${names[platform]} access token to connect.</p>
-                <p class="hint">For OAuth, configure credentials in your <code>.env</code> file.</p>
-            </div>
-            <div class="form-group">
-                <label>Access Token <span class="required">*</span></label>
-                <input type="text" id="modalAccessToken" class="form-input" placeholder="Paste your access token">
-            </div>
-            <div class="form-group">
-                <label>Refresh Token (optional)</label>
-                <input type="text" id="modalRefreshToken" class="form-input" placeholder="For token refresh">
-            </div>
-            <div class="form-group">
-                <label>Account Name</label>
-                <input type="text" id="modalAccountName" class="form-input" placeholder="e.g., My Channel">
-            </div>
-            ${platform === 'instagram' || platform === 'facebook' ? `
-            <div class="form-group">
-                <label>Account / Page ID <span class="required">*</span></label>
-                <input type="text" id="modalAccountId" class="form-input" placeholder="e.g., 1234567890">
-            </div>` : ''}
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn-primary" onclick="connectAccount('${platform}')">
-                    <i class="fas fa-link"></i> Connect
-                </button>
-            </div>
-        `;
-        modal.style.display = 'flex';
-    }
-
-    async function connectAccount(platform) {
-        const accessToken = document.getElementById('modalAccessToken').value.trim();
-        if (!accessToken) { showToast('Please enter an access token', 'error'); return; }
-        const refreshToken = document.getElementById('modalRefreshToken')?.value.trim() || '';
-        const accountName = document.getElementById('modalAccountName')?.value.trim() || '';
-        const accountId = document.getElementById('modalAccountId')?.value.trim() || '';
-
-        try {
-            const response = await fetch(`/api/accounts/connect/${platform}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken, account_name: accountName, account_id: accountId }),
+    function openPublishHistory() {
+        fetch('/api/history/publish').then(r=>r.json()).then(items => {
+            let html = '<div class="modal-list">';
+            if (!items.length) { html += '<p class="hist-empty">No history</p>'; }
+            items.forEach(i => {
+                html += `<div class="modal-list-row">
+                    <span>${i.video_filename}</span>
+                    <span class="hist-meta">${i.platforms.join(', ')} · ${i.all_success ? 'OK' : 'Partial'}</span>
+                </div>`;
             });
-            const result = await response.json();
-            if (result.success) { closeModal(); showToast(result.message, 'success'); setTimeout(() => location.reload(), 1500); }
-            else showToast(result.error, 'error');
-        } catch (err) { showToast('Connection failed: ' + err.message, 'error'); }
+            html += '</div>';
+            document.getElementById('genericModalTitle').innerHTML = '<i class="fas fa-history"></i> Publish History';
+            document.getElementById('genericModalBody').innerHTML = html;
+            openModal('genericModal');
+        });
     }
-
-    async function disconnectAccount(platform) {
-        if (!confirm(`Disconnect your ${platform} account?`)) return;
-        try {
-            const response = await fetch(`/api/accounts/delete/${platform}`, { method: 'DELETE' });
-            const result = await response.json();
-            if (result.success) { showToast('Account disconnected', 'success'); setTimeout(() => location.reload(), 1500); }
-        } catch (err) { showToast('Failed to disconnect', 'error'); }
-    }
-
-    function closeModal() { document.getElementById('accountModal').style.display = 'none'; }
 </script>
 {% endblock %}
