@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Publish Video — Content Publisher{% endblock %}
+{% block page_title %}Publish Video{% endblock %}
+{% block page_subtitle %}Upload and publish your videos to multiple platforms{% endblock %}
+
+{% block content %}
+<div class="publish-layout">
+    <!-- Step 1: Upload Video -->
+    <div class="card">
+        <div class="card-header">
+            <div class="step-badge">1</div>
+            <h2><i class="fas fa-cloud-upload-alt"></i> Upload Video</h2>
+        </div>
+        <div class="card-body">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">
+                    <i class="fas fa-film"></i>
+                </div>
+                <p class="upload-text">Drag & drop your video here</p>
+                <p class="upload-subtext">or click to browse — MP4, MOV, AVI, MKV, WebM</p>
+                <input type="file" id="videoFile" accept="video/*" style="display: none;" onchange="handleVideoUpload(this)">
+                <button class="btn-secondary" onclick="document.getElementById('videoFile').click()">
+                    <i class="fas fa-folder-open"></i> Browse Files
+                </button>
+            </div>
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">Uploading...</p>
+            </div>
+            <div class="upload-result" id="uploadResult" style="display: none;">
+                <div class="upload-info">
+                    <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                    <span id="uploadedFilename">—</span>
+                    <span class="upload-size" id="uploadedSize">—</span>
+                </div>
+                <button class="btn-text" onclick="resetUpload()">
+                    <i class="fas fa-redo"></i> Change Video
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Connect Accounts (if not connected) -->
+    <div class="card">
+        <div class="card-header">
+            <div class="step-badge">2</div>
+            <h2><i class="fas fa-plug"></i> Platform Accounts</h2>
+        </div>
+        <div class="card-body">
+            <div class="account-status-grid">
+                {% for key, platform in platforms.items() %}
+                <div class="account-status-card" id="account-{{ key }}">
+                    <div class="platform-icon" style="background: {{ platform.color }}20; color: {{ platform.color }};">
+                        <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }}"></i>
+                    </div>
+                    <div class="platform-status-info">
+                        <span class="platform-name">{{ platform.name }}</span>
+                        <span class="platform-connection" id="connection-{{ key }}">
+                            {% set connected = namespace(val=false) %}
+                            {% for acc in accounts %}
+                                {% if acc.platform == key %}
+                                    {% set connected.val = true %}
+                                    <span class="status-connected"><i class="fas fa-check-circle"></i> Connected as {{ acc.account_name or 'Account' }}</span>
+                                {% endif %}
+                            {% endfor %}
+                            {% if not connected.val %}
+                                <span class="status-disconnected"><i class="fas fa-times-circle"></i> Not connected</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <button class="btn-sm {% if connected.val %}btn-danger{% else %}btn-primary{% endif %}"
+                            onclick="manageAccount('{{ key }}')" id="accountBtn-{{ key }}">
+                        {% if connected.val %}Disconnect{% else %}Connect{% endif %}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="info-banner">
+                <i class="fas fa-info-circle"></i>
+                <span>Connect your accounts before publishing. Visit the <a href="/accounts">Accounts</a> page for full setup.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Platform Selection & Metadata -->
+    <div class="card">
+        <div class="card-header">
+            <div class="step-badge">3</div>
+            <h2><i class="fas fa-share-alt"></i> Select Platforms & Configure</h2>
+        </div>
+        <div class="card-body">
+            <!-- Platform Selection -->
+            <div class="platform-select-grid">
+                {% for key, platform in platforms.items() %}
+                <label class="platform-select-card" id="select-{{ key }}">
+                    <input type="checkbox" name="platforms" value="{{ key }}" onchange="togglePlatform('{{ key }}')">
+                    <div class="platform-select-inner">
+                        <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }}"></i>
+                        <span>{{ platform.name }}</span>
+                        <div class="check-indicator"><i class="fas fa-check"></i></div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+
+            <!-- Dynamic Platform Forms -->
+            <div id="platformForms">
+                {% for key, platform in platforms.items() %}
+                <div class="platform-form" id="form-{{ key }}" style="display: none;">
+                    <h3 class="platform-form-title">
+                        <i class="fab fa-{{ 'youtube' if key == 'youtube' else ('tiktok' if key == 'tiktok' else ('instagram' if key == 'instagram' else 'facebook')) }}"></i>
+                        {{ platform.name }} Settings
+                    </h3>
+                    <div class="platform-form-fields">
+                        {% for field in platform.fields %}
+                        <div class="form-group">
+                            <label for="{{ key }}-{{ field.key }}">
+                                {% if field.required %}<span class="required">*</span>{% endif %}
+                                {{ field.label }}
+                            </label>
+                            {% if field.type == 'text' %}
+                            <input type="text" id="{{ key }}-{{ field.key }}"
+                                   name="{{ key }}-{{ field.key }}"
+                                   class="form-input"
+                                   {% if field.max_length %}maxlength="{{ field.max_length }}"{% endif %}
+                                   {% if field.required %}required{% endif %}>
+                            {% elif field.type == 'textarea' %}
+                            <textarea id="{{ key }}-{{ field.key }}"
+                                      name="{{ key }}-{{ field.key }}"
+                                      class="form-textarea" rows="3"
+                                      {% if field.max_length %}maxlength="{{ field.max_length }}"{% endif %}
+                                      {% if field.required %}required{% endif %}></textarea>
+                            {% elif field.type == 'select' %}
+                            <select id="{{ key }}-{{ field.key }}"
+                                    name="{{ key }}-{{ field.key }}"
+                                    class="form-select"
+                                    {% if field.required %}required{% endif %}>
+                                {% for opt in field.options %}
+                                <option value="{{ opt.value }}">{{ opt.label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% elif field.type == 'checkbox' %}
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="{{ key }}-{{ field.key }}"
+                                       name="{{ key }}-{{ field.key }}">
+                                <span class="checkbox-custom"></span>
+                                <span>{{ field.label }}</span>
+                            </label>
+                            {% endif %}
+                            {% if field.max_length %}
+                            <small class="form-hint">Max {{ field.max_length }} characters</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Publish -->
+    <div class="card">
+        <div class="card-header">
+            <div class="step-badge">4</div>
+            <h2><i class="fas fa-rocket"></i> Publish</h2>
+        </div>
+        <div class="card-body">
+            <div class="publish-summary" id="publishSummary">
+                <p>Select platforms above to see a summary of your publishing plan.</p>
+            </div>
+            <button class="btn-primary btn-large btn-publish" id="publishBtn" onclick="publishVideo()" disabled>
+                <i class="fas fa-paper-plane"></i>
+                <span>Publish Video</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card" id="publishResults" style="display: none;">
+        <div class="card-header">
+            <h2><i class="fas fa-flag-checkered"></i> Publishing Results</h2>
+        </div>
+        <div class="card-body">
+            <div id="resultsList"></div>
+        </div>
+    </div>
+
+    <!-- Publish History -->
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-history"></i> Recent Publications</h2>
+        </div>
+        <div class="card-body">
+            {% if publish_history %}
+            <div class="history-list">
+                {% for item in publish_history %}
+                <div class="history-item">
+                    <div class="history-info">
+                        <span class="history-filename">{{ item.video_filename }}</span>
+                        <span class="history-meta">
+                            {{ item.platforms|join(', ') }}
+                            · {{ 'All Success' if item.all_success else 'Partial/Failed' }}
+                            · {{ item.created_at[:16] }}
+                        </span>
+                    </div>
+                    <span class="status-badge {{ 'badge-success' if item.all_success else 'badge-warning' }}">
+                        {{ 'SUCCESS' if item.all_success else 'PARTIAL' }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-video"></i>
+                <p>No publications yet. Upload and publish your first video!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Account Connect Modal -->
+<div class="modal" id="accountModal" style="display: none;">
+    <div class="modal-backdrop" onclick="closeModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Connect Account</h3>
+            <button class="btn-icon" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Dynamic content -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let uploadedVideoPath = '';
+
+    // Drag and drop
+    const uploadZone = document.getElementById('uploadZone');
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('video/')) {
+            uploadVideo(file);
+        }
+    });
+
+    async function handleVideoUpload(input) {
+        const file = input.files[0];
+        if (file) uploadVideo(file);
+    }
+
+    async function uploadVideo(file) {
+        const formData = new FormData();
+        formData.append('video', file);
+
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'block';
+
+        try {
+            const response = await fetch('/api/video/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const result = await response.json();
+
+            document.getElementById('uploadProgress').style.display = 'none';
+
+            if (result.success) {
+                uploadedVideoPath = result.file_path;
+                document.getElementById('uploadResult').style.display = 'block';
+                document.getElementById('uploadedFilename').textContent = result.filename;
+                document.getElementById('uploadedSize').textContent = result.size_mb + ' MB';
+                updatePublishButton();
+                showToast('Video uploaded successfully!', 'success');
+            } else {
+                document.getElementById('uploadZone').style.display = 'block';
+                showToast(result.error, 'error');
+            }
+        } catch (err) {
+            document.getElementById('uploadProgress').style.display = 'none';
+            document.getElementById('uploadZone').style.display = 'block';
+            showToast('Upload failed: ' + err.message, 'error');
+        }
+    }
+
+    function resetUpload() {
+        uploadedVideoPath = '';
+        document.getElementById('uploadResult').style.display = 'none';
+        document.getElementById('uploadZone').style.display = 'block';
+        document.getElementById('videoFile').value = '';
+        updatePublishButton();
+    }
+
+    function togglePlatform(key) {
+        const form = document.getElementById(`form-${key}`);
+        const checkbox = document.querySelector(`input[name="platforms"][value="${key}"]`);
+        const card = document.getElementById(`select-${key}`);
+
+        if (checkbox.checked) {
+            form.style.display = 'block';
+            card.classList.add('selected');
+        } else {
+            form.style.display = 'none';
+            card.classList.remove('selected');
+        }
+        updatePublishButton();
+        updatePublishSummary();
+    }
+
+    function updatePublishButton() {
+        const selected = document.querySelectorAll('input[name="platforms"]:checked');
+        const btn = document.getElementById('publishBtn');
+        btn.disabled = selected.length === 0 || !uploadedVideoPath;
+    }
+
+    function updatePublishSummary() {
+        const selected = document.querySelectorAll('input[name="platforms"]:checked');
+        const summary = document.getElementById('publishSummary');
+        if (selected.length === 0) {
+            summary.innerHTML = '<p>Select platforms above to see a summary.</p>';
+            return;
+        }
+        const names = Array.from(selected).map(cb => {
+            const key = cb.value;
+            return document.querySelector(`#select-${key} span`).textContent;
+        });
+        summary.innerHTML = `<p><strong>Publishing to:</strong> ${names.join(', ')}</p>`;
+    }
+
+    async function publishVideo() {
+        const selected = document.querySelectorAll('input[name="platforms"]:checked');
+        if (selected.length === 0 || !uploadedVideoPath) {
+            showToast('Please upload a video and select at least one platform', 'error');
+            return;
+        }
+
+        const platformsData = {};
+        selected.forEach(cb => {
+            const key = cb.value;
+            const metadata = {};
+            // Gather all field values for this platform
+            const inputs = document.querySelectorAll(`[id^="${key}-"]`);
+            inputs.forEach(input => {
+                const fieldKey = input.id.replace(`${key}-`, '');
+                if (input.type === 'checkbox') {
+                    metadata[fieldKey] = input.checked;
+                } else {
+                    metadata[fieldKey] = input.value;
+                }
+            });
+            platformsData[key] = metadata;
+        });
+
+        showLoading('Publishing your video...');
+        document.getElementById('publishBtn').disabled = true;
+
+        try {
+            const response = await fetch('/api/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    video_path: uploadedVideoPath,
+                    platforms: platformsData,
+                }),
+            });
+
+            const result = await response.json();
+            hideLoading();
+
+            displayResults(result);
+        } catch (err) {
+            hideLoading();
+            showToast('Publishing failed: ' + err.message, 'error');
+        }
+
+        document.getElementById('publishBtn').disabled = false;
+    }
+
+    function displayResults(result) {
+        const container = document.getElementById('publishResults');
+        const list = document.getElementById('resultsList');
+        container.style.display = 'block';
+
+        if (result.results) {
+            let html = '';
+            for (const [platform, res] of Object.entries(result.results)) {
+                const success = res.success;
+                html += `
+                    <div class="result-card ${success ? 'result-success' : 'result-error'}">
+                        <div class="result-icon">
+                            <i class="fas fa-${success ? 'check-circle' : 'times-circle'}"></i>
+                        </div>
+                        <div class="result-details">
+                            <span class="result-platform">${platform.toUpperCase()}</span>
+                            <span class="result-message">${success ? res.message : res.error}</span>
+                            ${res.video_url ? `<a href="${res.video_url}" target="_blank" class="result-link">${res.video_url}</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            list.innerHTML = html;
+        } else {
+            list.innerHTML = `<div class="result-card result-error">
+                <div class="result-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="result-details">
+                    <span class="result-platform">Error</span>
+                    <span class="result-message">${result.error || 'Unknown error'}</span>
+                </div>
+            </div>`;
+        }
+
+        showToast(
+            result.all_success ? 'All platforms published successfully!' : 'Some platforms had issues',
+            result.all_success ? 'success' : 'warning'
+        );
+    }
+
+    function manageAccount(platform) {
+        const modal = document.getElementById('accountModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+
+        const platformNames = {youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook'};
+        modalTitle.textContent = `Connect ${platformNames[platform]} Account`;
+
+        modalBody.innerHTML = `
+            <div class="modal-instructions">
+                <p>Enter your ${platformNames[platform]} access token to connect your account.</p>
+                <p class="hint">For production use, configure OAuth credentials in your <code>.env</code> file.</p>
+            </div>
+            <div class="form-group">
+                <label>Access Token <span class="required">*</span></label>
+                <input type="text" id="modalAccessToken" class="form-input" placeholder="Paste your access token here">
+            </div>
+            <div class="form-group">
+                <label>Refresh Token (optional)</label>
+                <input type="text" id="modalRefreshToken" class="form-input" placeholder="For token refresh">
+            </div>
+            <div class="form-group">
+                <label>Account Name</label>
+                <input type="text" id="modalAccountName" class="form-input" placeholder="e.g., My Channel">
+            </div>
+            ${platform === 'instagram' || platform === 'facebook' ? `
+            <div class="form-group">
+                <label>Account / Page ID <span class="required">*</span></label>
+                <input type="text" id="modalAccountId" class="form-input" placeholder="e.g., 1234567890">
+            </div>` : ''}
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" onclick="connectAccount('${platform}')">
+                    <i class="fas fa-link"></i> Connect
+                </button>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+    }
+
+    async function connectAccount(platform) {
+        const accessToken = document.getElementById('modalAccessToken').value.trim();
+        const refreshToken = document.getElementById('modalRefreshToken')?.value.trim() || '';
+        const accountName = document.getElementById('modalAccountName')?.value.trim() || '';
+        const accountId = document.getElementById('modalAccountId')?.value.trim() || '';
+
+        if (!accessToken) {
+            showToast('Please enter an access token', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/accounts/connect/${platform}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken, account_name: accountName, account_id: accountId }),
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                closeModal();
+                showToast(result.message, 'success');
+                // Update UI
+                const connEl = document.getElementById(`connection-${platform}`);
+                if (connEl) connEl.innerHTML = `<span class="status-connected"><i class="fas fa-check-circle"></i> Connected as ${accountName || 'Account'}</span>`;
+                const btnEl = document.getElementById(`accountBtn-${platform}`);
+                if (btnEl) {
+                    btnEl.textContent = 'Disconnect';
+                    btnEl.className = 'btn-sm btn-danger';
+                    btnEl.onclick = () => disconnectAccount(platform);
+                }
+            } else {
+                showToast(result.error, 'error');
+            }
+        } catch (err) {
+            showToast('Connection failed: ' + err.message, 'error');
+        }
+    }
+
+    async function disconnectAccount(platform) {
+        try {
+            const response = await fetch(`/api/accounts/delete/${platform}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) {
+                showToast('Account disconnected', 'success');
+                location.reload();
+            }
+        } catch (err) {
+            showToast('Failed to disconnect', 'error');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('accountModal').style.display = 'none';
+    }
+</script>
+{% endblock %}

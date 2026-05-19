@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Voice Studio — Content Publisher{% endblock %}
+{% block page_title %}Voice Studio{% endblock %}
+{% block page_subtitle %}Generate professional narration with AI-powered voices{% endblock %}
+
+{% block content %}
+<div class="tts-layout">
+    <!-- Left: Input Form -->
+    <div class="tts-form-section">
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-pen-fancy"></i> Script & Settings</h2>
+            </div>
+            <div class="card-body">
+                <form id="ttsForm" onsubmit="return false;">
+                    <!-- Filename -->
+                    <div class="form-group">
+                        <label for="filename">
+                            <i class="fas fa-file-audio"></i> Output Filename
+                        </label>
+                        <input type="text" id="filename" name="filename"
+                               placeholder="e.g., my_narration_episode_1"
+                               class="form-input" autocomplete="off">
+                        <small class="form-hint">This will be the name of your MP3 file</small>
+                    </div>
+
+                    <!-- Script Text -->
+                    <div class="form-group">
+                        <label for="prompt">
+                            <i class="fas fa-scroll"></i> Your Script
+                        </label>
+                        <textarea id="prompt" name="prompt" rows="10"
+                                  placeholder="Paste your English script here...
+The text will be preprocessed for perfect TTS pronunciation.
+Abbreviations like US, UK, WWII will be expanded automatically."
+                                  class="form-textarea" required></textarea>
+                        <div class="textarea-footer">
+                            <span id="charCount" class="char-count">0 characters</span>
+                            <button type="button" class="btn-text" onclick="clearScript()">
+                                <i class="fas fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Voice Selection -->
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-microphone"></i> Choose Voice
+                        </label>
+                        <div class="voice-grid">
+                            {% for key, voice in voices.items() %}
+                            <div class="voice-card {% if voice.get('recommended') %}recommended{% endif %}"
+                                 data-voice="{{ key }}" onclick="selectVoice('{{ key }}')">
+                                <div class="voice-flag">
+                                    <span class="flag-badge">{{ voice.flag }}</span>
+                                </div>
+                                <div class="voice-info">
+                                    <span class="voice-name">{{ voice.name }}</span>
+                                    <span class="voice-desc">{{ voice.description }}</span>
+                                </div>
+                                <div class="voice-gender">
+                                    <i class="fas fa-{{ 'mars' if voice.gender == 'Male' else 'venus' }}"></i>
+                                </div>
+                                {% if voice.get('recommended') %}
+                                <div class="voice-badge">TOP PICK</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" id="selectedVoice" name="voice" value="1">
+                    </div>
+
+                    <!-- Narration Style -->
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-sliders-h"></i> Narration Style
+                        </label>
+                        <div class="preset-grid">
+                            {% for key, preset in presets.items() %}
+                            <div class="preset-card" data-preset="{{ key }}" onclick="selectPreset('{{ key }}')">
+                                <i class="fas fa-{{ preset.icon }}"></i>
+                                <span class="preset-label">{{ preset.label }}</span>
+                                <span class="preset-details">Rate: {{ preset.rate }} | Pitch: {{ preset.pitch }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" id="selectedPreset" name="preset" value="documentary">
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button type="button" class="btn-primary btn-large btn-generate"
+                            onclick="generateTTS()" id="generateBtn">
+                        <i class="fas fa-magic"></i>
+                        <span>Generate Voice</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Results & History -->
+    <div class="tts-result-section">
+        <!-- Current Result -->
+        <div class="card" id="resultCard" style="display: none;">
+            <div class="card-header">
+                <h2><i class="fas fa-check-circle"></i> Generation Result</h2>
+            </div>
+            <div class="card-body">
+                <div class="result-info">
+                    <div class="result-item">
+                        <span class="result-label">File</span>
+                        <span class="result-value" id="resultFilename">—</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Voice</span>
+                        <span class="result-value" id="resultVoice">—</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Style</span>
+                        <span class="result-value" id="resultPreset">—</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Size</span>
+                        <span class="result-value" id="resultSize">—</span>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <a id="downloadLink" href="#" class="btn-primary" download>
+                        <i class="fas fa-download"></i> Download MP3
+                    </a>
+                    <button class="btn-secondary" onclick="playPreview()">
+                        <i class="fas fa-play"></i> Preview
+                    </button>
+                </div>
+                <!-- Audio Player -->
+                <audio id="audioPlayer" controls style="width: 100%; margin-top: 16px; display: none;"></audio>
+            </div>
+        </div>
+
+        <!-- Error Card -->
+        <div class="card card-error" id="errorCard" style="display: none;">
+            <div class="card-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> Error</h2>
+            </div>
+            <div class="card-body">
+                <p id="errorMessage">Something went wrong.</p>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-history"></i> Recent Generations</h2>
+            </div>
+            <div class="card-body">
+                {% if tts_history %}
+                <div class="history-list">
+                    {% for item in tts_history %}
+                    <div class="history-item">
+                        <div class="history-info">
+                            <span class="history-filename">{{ item.filename }}</span>
+                            <span class="history-meta">
+                                {{ item.voice_name }} · {{ item.preset_name }}
+                                · {{ item.file_size_kb|round(0)|int }} KB
+                                · {{ item.created_at[:16] }}
+                            </span>
+                        </div>
+                        <a href="/api/tts/download/{{ item.filename }}" class="btn-icon" download title="Download">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-microphone-alt"></i>
+                    <p>No generations yet. Create your first voice!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Character counter
+    const promptEl = document.getElementById('prompt');
+    const charCountEl = document.getElementById('charCount');
+    promptEl.addEventListener('input', () => {
+        charCountEl.textContent = `${promptEl.value.length} characters`;
+    });
+
+    function clearScript() {
+        promptEl.value = '';
+        charCountEl.textContent = '0 characters';
+    }
+
+    function selectVoice(key) {
+        document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
+        document.querySelector(`.voice-card[data-voice="${key}"]`).classList.add('selected');
+        document.getElementById('selectedVoice').value = key;
+    }
+
+    function selectPreset(key) {
+        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('selected'));
+        document.querySelector(`.preset-card[data-preset="${key}"]`).classList.add('selected');
+        document.getElementById('selectedPreset').value = key;
+    }
+
+    // Select defaults
+    selectVoice('1');
+    selectPreset('documentary');
+
+    async function generateTTS() {
+        const prompt = promptEl.value.trim();
+        const voice = document.getElementById('selectedVoice').value;
+        const preset = document.getElementById('selectedPreset').value;
+        const filename = document.getElementById('filename').value.trim();
+
+        if (!prompt) {
+            showToast('Please enter your script text', 'error');
+            return;
+        }
+
+        showLoading('Generating your narration...');
+        document.getElementById('generateBtn').disabled = true;
+
+        try {
+            const response = await fetch('/api/tts/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, voice, preset, filename }),
+            });
+
+            const result = await response.json();
+            hideLoading();
+
+            if (result.success) {
+                document.getElementById('resultCard').style.display = 'block';
+                document.getElementById('errorCard').style.display = 'none';
+                document.getElementById('resultFilename').textContent = result.filename;
+                document.getElementById('resultVoice').textContent = result.voice;
+                document.getElementById('resultPreset').textContent = result.preset;
+                document.getElementById('resultSize').textContent = result.size_kb + ' KB';
+                document.getElementById('downloadLink').href = '/api/tts/download/' + result.filename;
+
+                // Setup audio preview
+                const player = document.getElementById('audioPlayer');
+                player.src = '/api/tts/download/' + result.filename;
+                player.style.display = 'block';
+
+                showToast('Voice generated successfully!', 'success');
+
+                // Auto-download
+                const link = document.createElement('a');
+                link.href = '/api/tts/download/' + result.filename;
+                link.download = result.filename;
+                link.click();
+            } else {
+                document.getElementById('resultCard').style.display = 'none';
+                document.getElementById('errorCard').style.display = 'block';
+                document.getElementById('errorMessage').textContent = result.error;
+                showToast(result.error, 'error');
+            }
+        } catch (err) {
+            hideLoading();
+            showToast('Network error: ' + err.message, 'error');
+        }
+
+        document.getElementById('generateBtn').disabled = false;
+    }
+
+    function playPreview() {
+        const player = document.getElementById('audioPlayer');
+        if (player.src) {
+            player.play();
+        }
+    }
+</script>
+{% endblock %}
