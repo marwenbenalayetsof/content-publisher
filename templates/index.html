@@ -43,14 +43,34 @@
             <input type="hidden" id="selectedStyle" value="documentary">
         </div>
 
-        <button class="btn-main" id="generateBtn" onclick="generateTTS()">
-            <i class="fas fa-magic"></i> Generate MP3
-        </button>
+        <!-- Two-step action: Preview first, then Generate & Download -->
+        <div class="action-row">
+            <button class="btn-preview" id="previewBtn" onclick="previewTTS()">
+                <i class="fas fa-headphones"></i> Preview
+            </button>
+            <button class="btn-main" id="generateBtn" onclick="generateTTS()" disabled>
+                <i class="fas fa-download"></i> Generate & Download
+            </button>
+        </div>
     </section>
 
-    <!-- RIGHT PANEL: Result -->
+    <!-- RIGHT PANEL: Preview Player + Result -->
     <section class="panel panel-right">
-        <!-- Result card -->
+
+        <!-- Preview Player (shown after preview generation) -->
+        <div class="preview-card" id="previewCard" style="display:none">
+            <div class="preview-header">
+                <div class="preview-badge"><i class="fas fa-headphones"></i> Preview</div>
+                <span class="preview-voice" id="previewVoice">—</span>
+            </div>
+            <audio id="audioPlayer" controls class="preview-audio"></audio>
+            <div class="preview-text" id="previewText">—</div>
+            <div class="preview-hint">
+                <i class="fas fa-info-circle"></i> Listen to the preview. If you like it, click <strong>Generate & Download</strong>.
+            </div>
+        </div>
+
+        <!-- Result card (shown after full generation) -->
         <div class="result-card" id="resultCard" style="display:none">
             <div class="result-icon"><i class="fas fa-check-circle"></i></div>
             <div class="result-body">
@@ -63,17 +83,20 @@
             </div>
             <div class="result-actions">
                 <a id="downloadLink" href="#" class="btn-action" download><i class="fas fa-download"></i></a>
-                <button class="btn-action" onclick="playPreview()"><i class="fas fa-play"></i></button>
+                <button class="btn-action" onclick="playResult()"><i class="fas fa-play"></i></button>
             </div>
         </div>
-
-        <!-- Audio player -->
-        <audio id="audioPlayer" controls style="display:none;width:100%;margin-top:8px"></audio>
 
         <!-- Error -->
         <div class="error-card" id="errorCard" style="display:none">
             <i class="fas fa-exclamation-circle"></i>
             <span id="errorMessage">Error</span>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState">
+            <i class="fas fa-headphones-alt"></i>
+            <p>Enter your script and click <strong>Preview</strong> to listen first</p>
         </div>
 
         <!-- History shortcut -->
@@ -122,6 +145,54 @@
         document.getElementById('selectedStyle').value = key;
     }
 
+    // ─── PREVIEW ───
+    async function previewTTS() {
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) { showToast('Paste your script first','error'); return; }
+
+        const voice = document.getElementById('selectedVoice').value;
+        const preset = document.getElementById('selectedStyle').value;
+
+        showLoading('Generating preview...');
+        document.getElementById('previewBtn').disabled = true;
+
+        try {
+            const res = await fetch('/api/tts/preview', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({prompt, voice, preset})
+            });
+            const data = await res.json();
+            hideLoading();
+
+            if (data.success) {
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('resultCard').style.display = 'none';
+                document.getElementById('errorCard').style.display = 'none';
+                document.getElementById('previewCard').style.display = 'flex';
+                document.getElementById('previewVoice').textContent = data.voice + ' · ' + data.preset;
+                document.getElementById('previewText').textContent = '"' + data.preview_text + '"';
+
+                const player = document.getElementById('audioPlayer');
+                player.src = '/api/tts/download/' + data.filename + '?t=' + Date.now();
+                player.style.display = 'block';
+                player.play().catch(() => {});
+
+                // Enable the generate button after preview
+                document.getElementById('generateBtn').disabled = false;
+                showToast('Preview ready — listen and decide!', 'success');
+            } else {
+                document.getElementById('errorCard').style.display = 'flex';
+                document.getElementById('errorMessage').textContent = data.error;
+                showToast(data.error, 'error');
+            }
+        } catch(e) {
+            hideLoading();
+            showToast('Network error', 'error');
+        }
+        document.getElementById('previewBtn').disabled = false;
+    }
+
+    // ─── GENERATE FULL & DOWNLOAD ───
     async function generateTTS() {
         const prompt = document.getElementById('prompt').value.trim();
         if (!prompt) { showToast('Paste your script first','error'); return; }
@@ -130,7 +201,7 @@
         const preset = document.getElementById('selectedStyle').value;
         const filename = document.getElementById('filename').value.trim();
 
-        showLoading('Generating MP3...');
+        showLoading('Generating full MP3...');
         document.getElementById('generateBtn').disabled = true;
 
         try {
@@ -142,8 +213,10 @@
             hideLoading();
 
             if (data.success) {
-                document.getElementById('resultCard').style.display = 'flex';
+                document.getElementById('previewCard').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
                 document.getElementById('errorCard').style.display = 'none';
+                document.getElementById('resultCard').style.display = 'flex';
                 document.getElementById('resultFilename').textContent = data.filename;
                 document.getElementById('resultVoice').textContent = data.voice;
                 document.getElementById('resultPreset').textContent = data.preset;
@@ -152,7 +225,6 @@
 
                 const player = document.getElementById('audioPlayer');
                 player.src = '/api/tts/download/' + data.filename;
-                player.style.display = 'block';
 
                 showToast('MP3 generated!', 'success');
 
@@ -162,7 +234,6 @@
                 a.download = data.filename;
                 a.click();
             } else {
-                document.getElementById('resultCard').style.display = 'none';
                 document.getElementById('errorCard').style.display = 'flex';
                 document.getElementById('errorMessage').textContent = data.error;
                 showToast(data.error, 'error');
@@ -174,7 +245,7 @@
         document.getElementById('generateBtn').disabled = false;
     }
 
-    function playPreview() {
+    function playResult() {
         const p = document.getElementById('audioPlayer');
         if (p.src) p.play();
     }

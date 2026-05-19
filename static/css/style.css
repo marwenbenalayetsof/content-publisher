@@ -376,6 +376,94 @@ html, body {
     box-shadow: 0 0 0 2px var(--glow);
 }
 
+/* Preview card */
+.preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    background: rgba(108,92,231,.06);
+    border: 1px solid rgba(108,92,231,.2);
+    border-radius: var(--r);
+}
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.preview-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.preview-voice {
+    font-size: 11px;
+    color: var(--text3);
+}
+.preview-audio {
+    width: 100%;
+    height: 36px;
+    border-radius: var(--r);
+    outline: none;
+}
+.preview-audio::-webkit-media-controls-panel {
+    background: var(--bg3);
+}
+.preview-text {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+    line-height: 1.5;
+    max-height: 48px;
+    overflow: hidden;
+}
+.preview-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.4;
+}
+.preview-hint i { color: var(--accent); margin-top: 2px; flex-shrink: 0; }
+.preview-hint strong { color: var(--accent2); }
+
+/* Action row (preview + generate) */
+.action-row {
+    display: flex;
+    gap: 8px;
+}
+.btn-preview {
+    flex: 0 0 auto;
+    padding: 10px 18px;
+    border: 2px solid var(--accent);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--accent2);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all .15s;
+}
+.btn-preview:hover {
+    background: rgba(108,92,231,.1);
+    transform: translateY(-1px);
+}
+.btn-preview:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.action-row .btn-main {
+    flex: 1;
+}
+
 /* Result card */
 .result-card {
     display: flex;

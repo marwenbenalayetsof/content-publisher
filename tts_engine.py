@@ -218,10 +218,58 @@ async def generate_audio(text: str, voice: str, rate: str,
         print("Warning: ffmpeg not found — keeping chunk files.")
 
 
+def generate_preview(prompt: str, voice_key: str, preset_key: str,
+                     output_dir: str = "output") -> dict:
+    """
+    Generate a short preview MP3 (first ~300 chars) for the user to listen to
+    before generating the full file. Returns dict with success, file_path, etc.
+    """
+    voice_info = VOICES.get(voice_key, VOICES["1"])
+    preset_info = PRESETS.get(preset_key, PRESETS["documentary"])
+
+    voice_id = voice_info["id"]
+    rate = preset_info["rate"]
+    pitch = preset_info["pitch"]
+
+    if not prompt.strip():
+        return {"success": False, "error": "Please enter your script text"}
+
+    # Take first ~300 characters at a sentence boundary for preview
+    preview_text = prompt.strip()[:400]
+    # Try to cut at the last sentence boundary
+    last_period = max(preview_text.rfind('.'), preview_text.rfind('!'), preview_text.rfind('?'))
+    if last_period > 100:
+        preview_text = preview_text[:last_period + 1]
+
+    os.makedirs(output_dir, exist_ok=True)
+    preview_file = os.path.join(output_dir, "_preview_temp.mp3")
+
+    try:
+        asyncio.run(
+            generate_audio(preview_text, voice_id, rate, pitch, preview_file)
+        )
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+    if os.path.exists(preview_file):
+        size_kb = os.path.getsize(preview_file) / 1024
+        return {
+            "success": True,
+            "file_path": preview_file,
+            "filename": "_preview_temp.mp3",
+            "size_kb": round(size_kb, 1),
+            "voice": voice_info["name"],
+            "preset": preset_info["label"],
+            "preview_text": preview_text,
+        }
+    else:
+        return {"success": False, "error": "Preview audio was not created"}
+
+
 def generate_tts(prompt: str, voice_key: str, preset_key: str,
                  filename: str, output_dir: str = "output") -> dict:
     """
-    Generate MP3 from script text.
+    Generate full MP3 from script text.
     Returns dict with success status, file path, and metadata.
     """
     voice_info = VOICES.get(voice_key, VOICES["1"])

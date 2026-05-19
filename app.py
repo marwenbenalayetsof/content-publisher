@@ -16,7 +16,7 @@ from config import (
     INSTAGRAM_SCOPES, FACEBOOK_SCOPES,
 )
 from models import init_db, save_tts_record, get_tts_history, save_publish_record, get_publish_history
-from tts_engine import VOICES, PRESETS, generate_tts
+from tts_engine import VOICES, PRESETS, generate_tts, generate_preview
 from social_publisher import (
     PLATFORMS, get_platforms_config, get_platform_fields,
     get_accounts, get_account_by_platform, save_account, delete_account,
@@ -61,9 +61,27 @@ def publish_page():
 #  API — TTS
 # ═══════════════════════════════════════════════════════════
 
+@app.route("/api/tts/preview", methods=["POST"])
+def api_tts_preview():
+    """Generate a short preview of TTS audio for the user to listen before generating full file."""
+    try:
+        data = request.get_json()
+        prompt = data.get("prompt", "").strip()
+        voice_key = data.get("voice", "1")
+        preset_key = data.get("preset", "documentary")
+
+        if not prompt:
+            return jsonify({"success": False, "error": "Please enter your script text"})
+
+        result = generate_preview(prompt, voice_key, preset_key, OUTPUT_DIR)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/tts/generate", methods=["POST"])
 def api_tts_generate():
-    """Generate TTS audio from text."""
+    """Generate full TTS audio from text."""
     try:
         data = request.get_json()
         prompt = data.get("prompt", "").strip()
