@@ -1,6 +1,6 @@
 """
-TTS Engine — Based on Documentary TTS v2
-Expanded with 10+ voices for professional narration
+TTS Engine — Voice Generation from Script
+Based on edge-tts with 12 professional narration voices
 """
 
 import asyncio
@@ -103,7 +103,7 @@ VOICES = {
     },
 }
 
-# Narration style presets
+# Narration style presets (rate = speed, pitch = depth)
 PRESETS = {
     "documentary": {
         "rate": "-8%",
@@ -145,54 +145,8 @@ PRESETS = {
 
 
 # ═══════════════════════════════════════════════════════════
-#  TEXT PREPROCESSING
+#  TEXT SPLITTING (for long scripts)
 # ═══════════════════════════════════════════════════════════
-
-def preprocess_text(text: str) -> str:
-    """Clean and normalize text for perfect TTS pronunciation."""
-    text = re.sub(r'\r\n', '\n', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    text = re.sub(r'[ \t]+', ' ', text)
-
-    abbreviations = {
-        r'\bBC\b':   'Before Christ',
-        r'\bAD\b':   'Anno Domini',
-        r'\bAKA\b':  'also known as',
-        r'\bWWI\b':  'World War One',
-        r'\bWWII\b': 'World War Two',
-        r'\bUS\b':   'United States',
-        r'\bUK\b':   'United Kingdom',
-        r'\bUSSR\b': 'Soviet Union',
-        r'\bNASA\b': 'NASA',
-        r'\bCEO\b':  'chief executive officer',
-        r'\bvs\b':   'versus',
-        r'\betc\b':  'et cetera',
-        r'\be\.g\b': 'for example',
-        r'\bi\.e\b': 'that is',
-        r'\bDr\b':   'Doctor',
-        r'\bSt\b':   'Saint',
-        r'\bMt\b':   'Mount',
-        r'\bAve\b':  'Avenue',
-        r'\bGov\b':  'Governor',
-        r'\bGen\b':  'General',
-    }
-    for pattern, replacement in abbreviations.items():
-        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
-
-    text = re.sub(r' ([.,!?;:])', r'\1', text)
-    text = re.sub(r'([.,!?;:])([^\s"\')\)])', r'\1 \2', text)
-    text = re.sub(r'([a-zA-Z])(\n)', r'\1.\2', text)
-    text = re.sub(r'\s*—\s*', ', ', text)
-    text = re.sub(r'\s*--\s*', ', ', text)
-    text = re.sub(r'\.{3,}', '... ', text)
-    text = re.sub(r'[!]{2,}', '!', text)
-    text = re.sub(r'[?]{2,}', '?', text)
-    text = re.sub(r'[,]{2,}', ',', text)
-    text = re.sub(r'\n\n', '. ', text)
-    text = re.sub(r'\n', ' ', text)
-    text = re.sub(r' {2,}', ' ', text)
-    return text.strip()
-
 
 def split_into_chunks(text: str, max_chars: int = 4500) -> list:
     """Split long text into sentence-boundary chunks."""
@@ -267,7 +221,7 @@ async def generate_audio(text: str, voice: str, rate: str,
 def generate_tts(prompt: str, voice_key: str, preset_key: str,
                  filename: str, output_dir: str = "output") -> dict:
     """
-    Main TTS generation function.
+    Generate MP3 from script text.
     Returns dict with success status, file path, and metadata.
     """
     voice_info = VOICES.get(voice_key, VOICES["1"])
@@ -277,10 +231,8 @@ def generate_tts(prompt: str, voice_key: str, preset_key: str,
     rate = preset_info["rate"]
     pitch = preset_info["pitch"]
 
-    # Preprocess text
-    clean_text = preprocess_text(prompt)
-    if not clean_text.strip():
-        return {"success": False, "error": "No text to process after preprocessing"}
+    if not prompt.strip():
+        return {"success": False, "error": "Please enter your script text"}
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -294,10 +246,10 @@ def generate_tts(prompt: str, voice_key: str, preset_key: str,
 
     output_file = os.path.join(output_dir, f"{filename}.mp3")
 
-    # Generate audio
+    # Generate audio directly from prompt — no preprocessing
     try:
         asyncio.run(
-            generate_audio(clean_text, voice_id, rate, pitch, output_file)
+            generate_audio(prompt.strip(), voice_id, rate, pitch, output_file)
         )
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -311,8 +263,6 @@ def generate_tts(prompt: str, voice_key: str, preset_key: str,
             "size_kb": round(size_kb, 1),
             "voice": voice_info["name"],
             "preset": preset_info["label"],
-            "chars_original": len(prompt),
-            "chars_processed": len(clean_text),
         }
     else:
         return {"success": False, "error": "Audio file was not created"}

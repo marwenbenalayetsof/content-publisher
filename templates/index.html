@@ -2,7 +2,7 @@
 
 {% block title %}Voice Studio — Content Publisher{% endblock %}
 {% block page_title %}Voice Studio{% endblock %}
-{% block page_subtitle %}Generate professional narration with AI-powered voices{% endblock %}
+{% block page_subtitle %}Generate MP3 voice from your script{% endblock %}
 
 {% block content %}
 <div class="tts-layout">
@@ -31,9 +31,7 @@
                             <i class="fas fa-scroll"></i> Your Script
                         </label>
                         <textarea id="prompt" name="prompt" rows="10"
-                                  placeholder="Paste your English script here...
-The text will be preprocessed for perfect TTS pronunciation.
-Abbreviations like US, UK, WWII will be expanded automatically."
+                                  placeholder="Paste your English script here..."
                                   class="form-textarea" required></textarea>
                         <div class="textarea-footer">
                             <span id="charCount" class="char-count">0 characters</span>
@@ -92,7 +90,7 @@ Abbreviations like US, UK, WWII will be expanded automatically."
                     <button type="button" class="btn-primary btn-large btn-generate"
                             onclick="generateTTS()" id="generateBtn">
                         <i class="fas fa-magic"></i>
-                        <span>Generate Voice</span>
+                        <span>Generate Voice MP3</span>
                     </button>
                 </form>
             </div>
@@ -186,7 +184,6 @@ Abbreviations like US, UK, WWII will be expanded automatically."
 
 {% block scripts %}
 <script>
-    // Character counter
     const promptEl = document.getElementById('prompt');
     const charCountEl = document.getElementById('charCount');
     promptEl.addEventListener('input', () => {
@@ -225,7 +222,7 @@ Abbreviations like US, UK, WWII will be expanded automatically."
             return;
         }
 
-        showLoading('Generating your narration...');
+        showLoading('Generating your voice MP3...');
         document.getElementById('generateBtn').disabled = true;
 
         try {
@@ -252,7 +249,7 @@ Abbreviations like US, UK, WWII will be expanded automatically."
                 player.src = '/api/tts/download/' + result.filename;
                 player.style.display = 'block';
 
-                showToast('Voice generated successfully!', 'success');
+                showToast('Voice MP3 generated successfully!', 'success');
 
                 // Auto-download
                 const link = document.createElement('a');
@@ -275,9 +272,7 @@ Abbreviations like US, UK, WWII will be expanded automatically."
 
     function playPreview() {
         const player = document.getElementById('audioPlayer');
-        if (player.src) {
-            player.play();
-        }
+        if (player.src) player.play();
     }
 </script>
 {% endblock %}

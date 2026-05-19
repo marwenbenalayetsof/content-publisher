@@ -1,58 +1,51 @@
 # Content Publisher
 
-Professional TTS Voice Generator & Social Media Video Publisher.
+**Two-in-one tool**: Generate voice MP3 from your script + Upload & publish videos to social media.
 
 ## Features
 
 ### Voice Studio
-- **12 Professional AI Voices** — National Geographic, BBC, Australian, and more narration styles
-- **6 Narration Presets** — Documentary, History Channel, Dramatic, Calm, News, Energetic
-- **Smart Text Preprocessing** — Automatically expands abbreviations (US → United States, WWII → World War Two)
-- **Auto-chunking** — Handles long scripts by splitting at sentence boundaries
-- **Auto-download** — MP3 is automatically downloaded with your chosen filename
+- Paste your English script → Choose a voice → Get MP3
+- **12 Professional AI Voices** — Christopher (NatGeo), Guy, Ryan (BBC), Thomas, William, Eric, Davis, Tony, Sonia, Ava, Mia, Natasha
+- **6 Narration Styles** — Documentary, History Channel, Dramatic, Calm, News, Energetic
+- Auto-download MP3 with your chosen filename
+- Audio preview player
+- History of all generations
 
 ### Video Publisher
-- **Multi-platform publishing** — YouTube, TikTok, Instagram, Facebook
-- **Platform-specific fields** — Each platform has tailored metadata options:
-  - YouTube: Title, Description, Tags, Category, Privacy, Made for Kids
-  - TikTok: Title, Privacy, Allow Comments/Duet/Stitch
-  - Instagram: Caption, Share to Feed/Story
-  - Facebook: Title, Description, Tags, Privacy
-- **Account Management** — Connect, update, and disconnect social media accounts
-- **Publishing History** — Track all your publications with success/failure status
+- Upload a video from your computer
+- Choose platforms: YouTube, TikTok, Instagram, Facebook
+- Fill in platform-specific details (title, description, tags, privacy, etc.)
+- Connect your social media accounts (saved for future use)
+- Publish to multiple platforms at once
+- Get success/failure notifications
 
 ## Quick Start
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/content-publisher.git
+git clone https://github.com/marwenbenalayetsof/content-publisher.git
 cd content-publisher
 
 # 2. Create virtual environment
 python -m venv venv
 
-# 3. Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
+# 3. Activate
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 
 # 4. Install dependencies
 pip install -r requirements.txt
 
 # 5. (Optional) Install ffmpeg for long script merging
-# On Windows: Download from https://ffmpeg.org/download.html
-# On macOS: brew install ffmpeg
-# On Ubuntu: sudo apt install ffmpeg
+# Windows: Download from https://ffmpeg.org
+# Mac: brew install ffmpeg
+# Ubuntu: sudo apt install ffmpeg
 
-# 6. (Optional) Configure social media OAuth
-cp .env.example .env
-# Edit .env with your API credentials
-
-# 7. Run the application
+# 6. Run
 python app.py
 
-# 8. Open in browser
+# 7. Open browser
 # http://localhost:5000
 ```
 
@@ -60,56 +53,41 @@ python app.py
 
 ```
 content-publisher/
-├── app.py                  # Main Flask application
-├── config.py               # Configuration & environment variables
-├── models.py               # SQLite database models
-├── tts_engine.py           # TTS engine (edge-tts based)
-├── social_publisher.py     # Social media publishing module
-├── requirements.txt        # Python dependencies
-├── .env.example            # Environment variables template
-├── static/
-│   ├── css/
-│   │   └── style.css       # Modern dark UI theme
-│   └── js/
-│       └── app.js          # Client-side JavaScript
+├── app.py                  # Flask application
+├── config.py               # Configuration
+├── models.py               # SQLite database
+├── tts_engine.py           # TTS voice generation
+├── social_publisher.py     # Social media publishing
+├── requirements.txt
+├── .env.example
+├── static/css/style.css    # Dark UI theme
+├── static/js/app.js
 ├── templates/
-│   ├── base.html           # Base template with sidebar
-│   ├── index.html          # Voice Studio page
-│   ├── publish.html        # Video Publisher page
-│   └── accounts.html       # Account Management page
-├── data/                   # SQLite database (auto-created)
+│   ├── base.html           # Layout with sidebar
+│   ├── index.html          # Voice Studio
+│   ├── publish.html        # Video Publisher
+│   └── accounts.html       # Account Management
+├── data/                   # SQLite DB (auto-created)
 ├── output/                 # Generated MP3 files
 └── uploads/                # Uploaded video files
 ```
 
 ## Social Media Setup
 
-### YouTube
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a project and enable YouTube Data API v3
-3. Create OAuth 2.0 credentials
-4. Set `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` in `.env`
+Set credentials in `.env` file (copy `.env.example`):
 
-### TikTok
-1. Go to [TikTok Developer Portal](https://developers.tiktok.com/)
-2. Create an app and request Content Posting API access
-3. Set `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` in `.env`
+- **YouTube**: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` from [Google Cloud Console](https://console.cloud.google.com/)
+- **TikTok**: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` from [TikTok Developer Portal](https://developers.tiktok.com/)
+- **Facebook/Instagram**: `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` from [Meta for Developers](https://developers.facebook.com/)
 
-### Instagram / Facebook
-1. Go to [Meta for Developers](https://developers.facebook.com/)
-2. Create an app with Instagram Graph API and Facebook Login
-3. Set `FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET` in `.env`
+You can also connect accounts by pasting access tokens directly in the UI.
 
-### Manual Token Connection
-If you don't have OAuth credentials configured, you can connect accounts by pasting access tokens directly in the Accounts page or the publish form.
+## Tech Stack
 
-## Technology Stack
-
-- **Backend**: Python 3.10+, Flask
-- **TTS**: edge-tts (Microsoft Azure Neural Voices)
-- **Database**: SQLite
-- **Frontend**: Vanilla HTML/CSS/JS with dark theme
-- **Social APIs**: YouTube Data API v3, TikTok Content Posting API, Meta Graph API
+- Python 3.12 + Flask
+- edge-tts (Microsoft Azure Neural Voices)
+- SQLite
+- Vanilla HTML/CSS/JS dark theme
 
 ## License
 
